@@ -101,6 +101,14 @@ class ODM_Photo:
         self.gps_xy_stddev = geo_entry.horizontal_accuracy
         self.gps_z_stddev = geo_entry.vertical_accuracy
 
+    def update_with_band_entry(self, band_entry):
+        self.band_name = band_entry.band_name
+        self.band_index = band_entry.band_index
+        if band_entry.capture_uuid is not None:
+            self.capture_uuid = band_entry.capture_uuid
+        if band_entry.utc_time is not None:
+            self.utc_time = band_entry.utc_time
+
     def parse_exif_values(self, _path_file):
         # Disable exifread log
         logging.getLogger('exifread').setLevel(logging.CRITICAL)

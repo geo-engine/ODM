@@ -1,5 +1,7 @@
+from datetime import datetime
 import math
 import re
+import random
 import cv2
 import os
 from opendm import dls
@@ -271,7 +273,7 @@ def compute_band_maps(multi_camera, primary_band):
 
         return s2p, p2s
 
-def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p, p2s, max_concurrency=1, max_samples=30):
+def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p, p2s, max_concurrency=1, max_samples=30, random_samples=True):
     log.ODM_INFO("Computing band alignment")
 
     alignment_info = {}
@@ -560,3 +562,57 @@ def to_8bit(image, force_normalize=False):
     return image
 
 
+class BandFile:
+    def __init__(self, multispectral_path):
+        self.multispectral_path = multispectral_path
+        self.entries = {}
+
+        with open(self.multispectral_path, 'r') as f:
+            contents = f.read().strip()
+
+        lines = list(map(str.strip, contents.split('\n')))
+        if lines:
+
+            for line in lines:
+                if line != "" and line[0] != "#":
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        i = 2
+                        filename = parts[0]
+                        band_index = int(parts[1])
+                        band_name = str(parts[2])
+
+                        capture_uuid = None
+                        if len(parts) >= 3:
+                            i = 3
+                            capture_uuid = (str(parts[3]))
+
+                        utc_time = None
+                        if len(parts) >= 4:
+                            i = 4                            
+                            time_obj = datetime.fromisoformat(parts[4])
+                            utc_time =  int(time_obj.timestamp() * 1000) 
+
+
+                        self.entries[filename] = BandEntry(
+                            filename, band_index, band_name, capture_uuid, utc_time)
+                    else:
+                        log.ODM_WARNING(
+                            "Malformed band line: %s" % line)
+
+    def get_entry(self, filename):
+        return self.entries.get(filename)
+
+
+class BandEntry:
+    def __init__(self, filename, band_index, band_name, capture_uuid=None, utc_time=None):
+        self.filename = filename
+        self.band_index = band_index
+        self.band_name = band_name
+        self.utc_time = utc_time
+        self.capture_uuid = capture_uuid
+
+    def __str__(self):
+        return "{} {} {} {} {}".format(self.filename,
+                                       self.band_index,
+                                       self.band_name, self.capture_uuid, self.capture_uuid).rstrip()
