@@ -4,6 +4,8 @@ import re
 import random
 import cv2
 import os
+
+from numpy.core.fromnumeric import shape
 from opendm import dls
 import numpy as np
 from opendm import log
@@ -276,7 +278,15 @@ def compute_band_maps(multi_camera, primary_band):
 def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p, p2s, max_concurrency=1, max_samples=30, random_samples=True):
     log.ODM_INFO("Computing band alignment")
 
+    # For each secondary band
     alignment_info = {}
+    sample_ids = None
+
+    if random_samples:
+        num_photos = len(multi_camera[0]['photos'])
+        sample_ids = list(range(0, num_photos))
+        random.shuffle(sample_ids)
+        log.ODM_INFO("Using random sample ids to find band alignment.")
 
     # For each secondary band
     for band in multi_camera:
@@ -313,7 +323,12 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
                 except Exception as e:
                     log.ODM_WARNING("Failed to compute homography for %s: %s" % (p['filename'], str(e)))
 
-            parallel_map(parallel_compute_homography, [{'filename': p.filename} for p in band['photos']], max_concurrency, single_thread_fallback=False)
+            sample_photos = [{'filename': p.filename} for p in band['photos']]
+            
+            if random_samples and sample_ids is not None:
+                sample_photos = [sample_photos[s] for s in sample_ids]
+
+            parallel_map(parallel_compute_homography, sample_photos, max_concurrency, single_thread_fallback=False)
 
             # Choose winning algorithm (doesn't seem to yield improvements)
             # feat_count = 0
