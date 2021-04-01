@@ -39,6 +39,23 @@ def load_images_database(database_file):
 
     return result
 
+def  apply_skip_list(files, skip_list_file):
+    with open(skip_list_file, 'r') as f:
+        skip_list = f.readlines()
+        skip_list = [s.strip() for s in skip_list]
+
+        include, skip = [], []
+
+        for f in files:
+            if f in skip_list:
+                skip.append(f)
+            else:
+                include.append(f)
+
+        return include, skip
+    
+
+
 class ODMLoadDatasetStage(types.ODM_Stage):
     def process(self, args, outputs):
         outputs['start_time'] = system.now_raw()
@@ -92,6 +109,15 @@ class ODMLoadDatasetStage(types.ODM_Stage):
         images_database_file = os.path.join(tree.root_path, 'images.json')
         if not io.file_exists(images_database_file) or self.rerun():
             files, rejects = get_images(images_dir)
+            
+            if tree.skip_list_file is not None and os.path.exists(tree.skip_list_file):
+                log.ODM_INFO("Loading skiplist from file: %s " % tree.skip_list_file)
+
+                files, skip = apply_skip_list(files, tree.skip_list_file)
+                rejects = rejects + skip
+                log.ODM_INFO("Skipping additional %s images. --> using %s images." % (len(skip), len(files)))
+
+
             if files:
                 # create ODMPhoto list
                 path_files = [os.path.join(images_dir, f) for f in files]

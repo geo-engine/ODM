@@ -204,7 +204,7 @@ class ODM_GeoRef(object):
         return (self.utm_east_offset, self.utm_north_offset)
     
 class ODM_Tree(object):
-    def __init__(self, root_path, gcp_file=None, geo_file=None, band_file=None):
+    def __init__(self, root_path, gcp_file=None, geo_file=None, band_file=None, skip_list_file=None):
         # root path to the project
         self.root_path = io.absolute_path_file(root_path)
         self.input_images = os.path.join(self.root_path, 'images')
@@ -226,6 +226,9 @@ class ODM_Tree(object):
         self.odm_report = os.path.join(self.root_path, 'odm_report')
 
         # important files paths
+
+        # skiplist
+        self.skip_list_file = skip_list_file or io.find('skip.txt', self.root_path)
 
         # multispectral
         self.odm_band_file = band_file or io.find('bands.txt', self.root_path)
