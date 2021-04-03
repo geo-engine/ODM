@@ -38,7 +38,15 @@ def dn_to_temperature(photo, image):
             image *= 0.01
             return image
         else:
-            log.ODM_WARNING("Unsupported camera [%s %s], thermal band will have digital numbers." % (photo.camera_make, photo.camera_model))
+            # conversion for FLIR cameras: Temperature (Celcius) = 0.04 * (counts) - 273 
+            if photo.camera__make== "FLIR" and photo.camera_model in ["Vue Pro R", "Duo R", "Duo Pro R"]:
+                log.ODM_DEBUG("Using camera [%s %s], specific method to convert digital numbers to Celsius." % (photo.camera_make, photo.camera_model))
+                image *= 0.04
+                image -=  273.15
+                return image
+
+            else:
+                log.ODM_WARNING("Unsupported camera [%s %s], thermal band will have digital numbers." % (photo.camera_make, photo.camera_model))
     else:
         log.ODM_WARNING("Tried to radiometrically calibrate a non-thermal image with temperature values (%s)" % photo.filename)
         return image

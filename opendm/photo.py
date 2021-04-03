@@ -120,6 +120,10 @@ class ODM_Photo:
             self.capture_uuid = band_entry.capture_uuid
         if band_entry.utc_time is not None:
             self.utc_time = band_entry.utc_time
+        if band_entry.camera_make is not None:
+            self.camera_make = band_entry.camera_make
+        if band_entry.camera_model is not None:
+            self.camera_model = band_entry.camera_model
 
     def parse_exif_values(self, _path_file):
         # Disable exifread log

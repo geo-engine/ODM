@@ -583,26 +583,44 @@ class BandFile:
             for line in lines:
                 if line != "" and line[0] != "#":
                     parts = line.split()
-                    if len(parts) >= 2:
+                    if len(parts) >= 3:
                         i = 2
                         filename = parts[0]
                         band_index = int(parts[1])
                         band_name = str(parts[2])
 
                         capture_uuid = None
-                        if len(parts) >= 3:
+                        if len(parts) >= 4:
                             i = 3
-                            capture_uuid = (str(parts[3]))
+                            capture_uuid = (str(parts[i]))
+                            if capture_uuid == "0":
+                                capture_uuid = None
 
                         utc_time = None
-                        if len(parts) >= 4:
-                            i = 4                            
-                            time_obj = datetime.fromisoformat(parts[4])
-                            utc_time =  int(time_obj.timestamp() * 1000) 
+                        if len(parts) >= 5:
+                            i = 4
+                            time_stamp = str(parts[i])
+                            if time_stamp != "0":
+                                time_obj = datetime.fromisoformat(parts[4])
+                                utc_time =  int(time_obj.timestamp() * 1000) 
+
+                        camera_make = None
+                        if len(parts) >= 6:
+                            i = 5
+                            camera_make = (str(parts[i]))
+                            if camera_make == "0":
+                                camera_make = None
+
+                        camera_model = None
+                        if len(parts) >= 7:
+                            i = 6
+                            camera_make = (str(parts[i]))
+                            if camera_model == "0":
+                                camera_model = None
 
 
                         self.entries[filename] = BandEntry(
-                            filename, band_index, band_name, capture_uuid, utc_time)
+                            filename, band_index, band_name, capture_uuid, utc_time, camera_make, camera_model)
                     else:
                         log.ODM_WARNING(
                             "Malformed band line: %s" % line)
@@ -612,14 +630,16 @@ class BandFile:
 
 
 class BandEntry:
-    def __init__(self, filename, band_index, band_name, capture_uuid=None, utc_time=None):
+    def __init__(self, filename, band_index, band_name, capture_uuid=None, utc_time=None, camera_make = None, camera_model = None):
         self.filename = filename
         self.band_index = band_index
         self.band_name = band_name
         self.utc_time = utc_time
         self.capture_uuid = capture_uuid
+        self.camera_make = camera_make
+        self.camera_model = camera_model
 
     def __str__(self):
-        return "{} {} {} {} {}".format(self.filename,
+        return "{} {} {} {} {} {} {}".format(self.filename,
                                        self.band_index,
-                                       self.band_name, self.capture_uuid, self.capture_uuid).rstrip()
+                                       self.band_name, self.capture_uuid, self.capture_uuid, self.camera_make, self.camera_model).rstrip()
