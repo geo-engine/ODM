@@ -296,7 +296,7 @@ def compute_alignment_matrices(multi_camera, primary_band_name, images_path, s2p
             def parallel_compute_homography(p):
                 try:
                     if len(matrices) >= max_samples:
-                        # log.ODM_INFO("Got enough samples for %s (%s)" % (band['name'], max_samples))
+                        log.ODM_INFO("Got enough samples for %s (%s)" % (band['name'], max_samples))
                         return
 
                     # Find good matrix candidates for alignment
@@ -544,19 +544,24 @@ def align_image(image, warp_matrix, dimension):
         return cv2.warpAffine(image, warp_matrix, dimension)
 
 
-def to_8bit(image, force_normalize=False):
+def to_8bit(image, force_normalize=False, force_actual_min_max=True):
     if not force_normalize and image.dtype == np.uint8:
         return image
 
-    # Convert to 8bit
-    try:
-        data_range = np.iinfo(image.dtype)
-        min_value = 0
-        value_range = float(data_range.max) - float(data_range.min)
-    except ValueError:
-        # For floats use the actual range of the image values
+    if force_actual_min_max:  # it would be smarter to just use the thermal conversion here
         min_value = float(image.min())
-        value_range = float(image.max()) - min_value
+        max_value = float(image.max())
+        value_range = max_value - min_value
+    else:
+        # Convert to 8bit
+        try:
+            data_range = np.iinfo(image.dtype)
+            min_value = 0
+            value_range = float(data_range.max) - float(data_range.min)
+        except ValueError:
+            # For floats use the actual range of the image values
+            min_value = float(image.min())
+            value_range = float(image.max()) - min_value
 
     image = image.astype(np.float32)
     image -= min_value
@@ -582,7 +587,7 @@ class BandFile:
 
             for line in lines:
                 if line != "" and line[0] != "#":
-                    parts = line.split()
+                    parts = line.split(";")
                     if len(parts) >= 3:
                         i = 2
                         filename = parts[0]
@@ -614,7 +619,7 @@ class BandFile:
                         camera_model = None
                         if len(parts) >= 7:
                             i = 6
-                            camera_make = (str(parts[i]))
+                            camera_model = (str(parts[i]))
                             if camera_model == "0":
                                 camera_model = None
 

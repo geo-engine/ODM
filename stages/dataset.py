@@ -147,18 +147,20 @@ class ODMLoadDatasetStage(types.ODM_Stage):
                         entry = gf.get_entry(p.filename)
                         if entry:
                             p.update_with_geo_entry(entry)
+                            log.ODM_DEBUG("GeoEntry: %s" % str(entry))
                             updated += 1
                     log.ODM_INFO("Updated %s image positions" % updated)
 
                     # Check if a bands file is available
                 if tree.odm_band_file is not None and os.path.exists(tree.odm_band_file):
-                    log.ODM_INFO("Found band mapping file")
+                    log.ODM_INFO("Found band mapping file: %s" % tree.odm_band_file)
                     bf = BandFile(tree.odm_band_file)
                     updated = 0
                     for p in photos:
                         entry = bf.get_entry(p.filename)
                         if entry:
                             p.update_with_band_entry(entry)
+                            log.ODM_DEBUG("BandEntry: %s" % str(entry))
                             updated += 1
                     log.ODM_INFO("Updated %s image bands" % updated)
 

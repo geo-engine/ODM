@@ -39,7 +39,7 @@ def dn_to_temperature(photo, image):
             return image
         else:
             # conversion for FLIR cameras: Temperature (Celcius) = 0.04 * (counts) - 273 
-            if photo.camera__make== "FLIR" and photo.camera_model in ["Vue Pro R", "Duo R", "Duo Pro R"]:
+            if photo.camera_make== "FLIR" and photo.camera_model in ["Vue Pro R", "Duo R", "Duo Pro R"]:
                 log.ODM_DEBUG("Using camera [%s %s], specific method to convert digital numbers to Celsius." % (photo.camera_make, photo.camera_model))
                 image *= 0.04
                 image -=  273.15
