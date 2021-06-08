@@ -24,8 +24,9 @@ class OSFMContext:
         self.opensfm_project_path = opensfm_project_path
     
     def run(self, command):
-        system.run('%s/bin/opensfm %s "%s"' %
-                    (context.opensfm_path, command, self.opensfm_project_path))
+        osfm_bin = os.path.join(context.opensfm_path, 'bin', 'opensfm')
+        system.run('%s %s "%s"' %
+                    (osfm_bin, command, self.opensfm_project_path))
 
     def is_reconstruction_done(self):
         tracks_file = os.path.join(self.opensfm_project_path, 'tracks.csv')
@@ -157,7 +158,7 @@ class OSFMContext:
             # Compute feature_process_size
             feature_process_size = 2048 # default
 
-            if 'resize_to_is_set' in args:
+            if ('resize_to_is_set' in args) and args.resize_to > 0:
                 # Legacy
                 log.ODM_WARNING("Legacy option --resize-to (this might be removed in a future version). Use --feature-quality instead.")
                 feature_process_size = int(args.resize_to)
@@ -175,6 +176,7 @@ class OSFMContext:
                 if max_dim > 0:
                     log.ODM_INFO("Maximum photo dimensions: %spx" % str(max_dim))
                     feature_process_size = int(max_dim * feature_quality_scale[args.feature_quality])
+                    log.ODM_INFO("Photo dimensions for feature extraction: %ipx" % feature_process_size)
                 else:
                     log.ODM_WARNING("Cannot compute max image dimensions, going with defaults")
 
@@ -347,7 +349,7 @@ class OSFMContext:
             # (containing only the primary band)
             if os.path.exists(self.recon_file()):
                 os.remove(self.recon_file())
-            os.rename(self.recon_backup_file(), self.recon_file())
+            os.replace(self.recon_backup_file(), self.recon_file())
             log.ODM_INFO("Restored reconstruction.json")
 
     def backup_reconstruction(self):
@@ -449,11 +451,20 @@ def get_submodel_argv(args, submodels_path = None, submodel_name = None):
         reading the contents of --cameras
     """
     assure_always = ['orthophoto_cutline', 'dem_euclidean_map', 'skip_3dmodel', 'skip_report']
-    remove_always = ['split', 'split_overlap', 'rerun_from', 'rerun', 'gcp', 'end_with', 'sm_cluster', 'rerun_all', 'pc_csv', 'pc_las', 'pc_ept', 'tiles']
+    remove_always = ['split', 'split_overlap', 'rerun_from', 'rerun', 'gcp', 'end_with', 'sm_cluster', 'rerun_all', 'pc_csv', 'pc_las', 'pc_ept', 'tiles', 'copy-to', 'cog']
     read_json_always = ['cameras']
 
     argv = sys.argv
-    result = [argv[0]] # Startup script (/path/to/run.py)
+
+    # Startup script (/path/to/run.py)
+    startup_script = argv[0]
+
+    # On Windows, make sure we always invoke the "run.bat" file
+    if sys.platform == 'win32':
+        startup_script_dir = os.path.dirname(startup_script)
+        startup_script = os.path.join(startup_script_dir, "run")
+
+    result = [startup_script] 
 
     args_dict = vars(args).copy()
     set_keys = [k[:-len("_is_set")] for k in args_dict.keys() if k.endswith("_is_set")]

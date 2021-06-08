@@ -17,6 +17,7 @@ class ODMOpenMVSStage(types.ODM_Stage):
         tree = outputs['tree']
         reconstruction = outputs['reconstruction']
         photos = reconstruction.photos
+        octx = OSFMContext(tree.opensfm)
 
         if not photos:
             log.ODM_ERROR('Not enough photos in photos array to start OpenMVS')
@@ -31,7 +32,6 @@ class ODMOpenMVSStage(types.ODM_Stage):
             # export reconstruction from opensfm
             openmvs_scene_file = os.path.join(tree.openmvs, "scene.mvs")
             if not io.file_exists(openmvs_scene_file) or self.rerun():
-                octx = OSFMContext(tree.opensfm)
                 cmd = 'export_openmvs'
                 octx.run(cmd)
             else:
@@ -144,7 +144,7 @@ class ODMOpenMVSStage(types.ODM_Stage):
                     log.ODM_ERROR("Could not compute dense point cloud (no PLY files available).")
                 if len(scene_ply_files) == 1:
                     # Simply rename
-                    os.rename(scene_ply_files[0], tree.openmvs_model)
+                    os.replace(scene_ply_files[0], tree.openmvs_model)
                     log.ODM_INFO("%s --> %s"% (scene_ply_files[0], tree.openmvs_model))
                 else:
                     # Merge

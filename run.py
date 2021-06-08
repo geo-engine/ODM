@@ -11,9 +11,9 @@ from opendm import config
 from opendm import system
 from opendm import io
 from opendm.progress import progressbc
+from opendm.utils import double_quote, get_processing_results_paths
 
 import os
-from pipes import quote
 
 from stages.odm_app import ODMApp
 
@@ -49,19 +49,12 @@ if __name__ == '__main__':
     if args.rerun_all:
         log.ODM_INFO("Rerun all -- Removing old data")
         os.system("rm -rf " + 
-                    " ".join([
-                        quote(os.path.join(args.project_path, "odm_georeferencing")),
-                        quote(os.path.join(args.project_path, "odm_meshing")),
-                        quote(os.path.join(args.project_path, "odm_orthophoto")),
-                        quote(os.path.join(args.project_path, "odm_dem")),
-                        quote(os.path.join(args.project_path, "odm_report")),
-                        quote(os.path.join(args.project_path, "odm_texturing")),
-                        quote(os.path.join(args.project_path, "opensfm")),
-                        quote(os.path.join(args.project_path, "odm_filterpoints")),
-                        quote(os.path.join(args.project_path, "odm_texturing_25d")),
-                        quote(os.path.join(args.project_path, "openmvs")),
-                        quote(os.path.join(args.project_path, "entwine_pointcloud")),
-                        quote(os.path.join(args.project_path, "submodels")),
+                    " ".join([double_quote(os.path.join(args.project_path, p)) for p in get_processing_results_paths()] + [
+                        double_quote(os.path.join(args.project_path, "odm_meshing")),
+                        double_quote(os.path.join(args.project_path, "opensfm")),
+                        double_quote(os.path.join(args.project_path, "odm_texturing_25d")),
+                        double_quote(os.path.join(args.project_path, "odm_filterpoints")),
+                        double_quote(os.path.join(args.project_path, "submodels")),
                     ]))
 
     app = ODMApp(args)

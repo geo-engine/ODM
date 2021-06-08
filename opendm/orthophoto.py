@@ -12,6 +12,7 @@ from rasterio.transform import Affine, rowcol
 from rasterio.mask import mask
 from opendm import io
 from opendm.tiles.tiler import generate_orthophoto_tiles
+from opendm.cogeo import convert_to_cogeo
 from osgeo import gdal
 
 
@@ -31,7 +32,7 @@ def build_overviews(orthophoto_file):
     kwargs = {'orthophoto': orthophoto_file}
     
     # Run gdaladdo
-    system.run('gdaladdo -ro -r average '
+    system.run('gdaladdo -r average '
                 '--config BIGTIFF_OVERVIEW IF_SAFER '
                 '--config COMPRESS_OVERVIEW JPEG '
                 '{orthophoto} 2 4 8 16'.format(**kwargs))
@@ -54,20 +55,38 @@ def generate_png(orthophoto_file, output_file=None, outsize=None):
     system.run('gdal_translate -of png "%s" "%s" %s %s '
                '--config GDAL_CACHEMAX %s%% ' % (orthophoto_file, output_file, osparam, bandparam, get_max_memory()))
 
+def generate_kmz(orthophoto_file, output_file=None, outsize=None):
+    if output_file is None:
+        base, ext = os.path.splitext(orthophoto_file)
+        output_file = base + '.kmz'
+    
+    # See if we need to select top three bands
+    bandparam = ""
+    gtif = gdal.Open(orthophoto_file)
+    if gtif.RasterCount > 4:
+        bandparam = "-b 1 -b 2 -b 3 -a_nodata 0"
 
+    system.run('gdal_translate -of KMLSUPEROVERLAY -co FORMAT=JPEG "%s" "%s" %s '
+               '--config GDAL_CACHEMAX %s%% ' % (orthophoto_file, output_file, bandparam, get_max_memory()))    
+    
 def post_orthophoto_steps(args, bounds_file_path, orthophoto_file, orthophoto_tiles_dir):
     if args.crop > 0:
         Cropper.crop(bounds_file_path, orthophoto_file, get_orthophoto_vars(args), keep_original=not args.optimize_disk_space, warp_options=['-dstalpha'])
 
-    if args.build_overviews:
+    if args.build_overviews and not args.cog:
         build_overviews(orthophoto_file)
 
     if args.orthophoto_png:
         generate_png(orthophoto_file)
+        
+    if args.orthophoto_kmz:
+        generate_kmz(orthophoto_file)
 
     if args.tiles:
         generate_orthophoto_tiles(orthophoto_file, orthophoto_tiles_dir, args.max_concurrency)
 
+    if args.cog:
+        convert_to_cogeo(orthophoto_file, max_workers=args.max_concurrency)
 
 def compute_mask_raster(input_raster, vector_mask, output_raster, blend_distance=20, only_max_coords_feature=False):
     if not os.path.exists(input_raster):

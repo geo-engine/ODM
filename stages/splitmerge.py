@@ -17,8 +17,9 @@ from opendm.concurrency import get_max_memory
 from opendm.remote import LocalRemoteExecutor
 from opendm.shots import merge_geojson_shots
 from opendm import point_cloud
-from pipes import quote
+from opendm.utils import double_quote
 from opendm.tiles.tiler import generate_dem_tiles
+from opendm.cogeo import convert_to_cogeo
 
 class ODMSplitStage(types.ODM_Stage):
     def process(self, args, outputs):
@@ -43,9 +44,9 @@ class ODMSplitStage(types.ODM_Stage):
 
                 log.ODM_INFO("Large dataset detected (%s photos) and split set at %s. Preparing split merge." % (len(photos), args.split))
                 config = [
-                    "submodels_relpath: ../submodels/opensfm",
-                    "submodel_relpath_template: ../submodels/submodel_%04d/opensfm",
-                    "submodel_images_relpath_template: ../submodels/submodel_%04d/images",
+                    "submodels_relpath: " + os.path.join("..", "submodels", "opensfm"),
+                    "submodel_relpath_template: " + os.path.join("..", "submodels", "submodel_%04d", "opensfm"),
+                    "submodel_images_relpath_template: " + os.path.join("..", "submodels", "submodel_%04d", "images"),
                     "submodel_size: %s" % args.split,
                     "submodel_overlap: %s" % args.split_overlap,
                 ]
@@ -219,7 +220,7 @@ class ODMSplitStage(types.ODM_Stage):
                         argv = get_submodel_argv(args, tree.submodels_path, sp_octx.name())
 
                         # Re-run the ODM toolchain on the submodel
-                        system.run(" ".join(map(quote, map(str, argv))), env_vars=os.environ.copy())
+                        system.run(" ".join(map(double_quote, map(str, argv))), env_vars=os.environ.copy())
                 else:
                     lre.set_projects([os.path.abspath(os.path.join(p, "..")) for p in submodel_paths])
                     lre.run_toolchain()
@@ -252,7 +253,7 @@ class ODMMergeStage(types.ODM_Stage):
                     
                     try:
                         point_cloud.merge(all_point_clouds, tree.odm_georeferencing_model_laz, rerun=self.rerun())
-                        point_cloud.post_point_cloud_steps(args, tree)
+                        point_cloud.post_point_cloud_steps(args, tree, self.rerun())
                     except Exception as e:
                         log.ODM_WARNING("Could not merge point cloud: %s (skipping)" % str(e))
                 else:
@@ -337,6 +338,9 @@ class ODMMergeStage(types.ODM_Stage):
                         
                         if args.tiles:
                             generate_dem_tiles(dem_file, tree.path("%s_tiles" % human_name.lower()), args.max_concurrency)
+                        
+                        if args.cog:
+                            convert_to_cogeo(dem_file, max_workers=args.max_concurrency)
                     else:
                         log.ODM_WARNING("Cannot merge %s, %s was not created" % (human_name, dem_file))
                 
