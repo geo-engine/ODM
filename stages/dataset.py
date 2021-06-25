@@ -59,7 +59,7 @@ def  apply_skip_list(files, skip_list_file):
 class ODMLoadDatasetStage(types.ODM_Stage):
     def process(self, args, outputs):
         outputs['start_time'] = system.now_raw()
-        tree = types.ODM_Tree(args.project_path, args.gcp, args.geo)
+        tree = types.ODM_Tree(args.project_path, args.gcp, args.geo, args.bands, args.skiplist)
         outputs['tree'] = tree
 
         if args.time and io.file_exists(tree.benchmarking):
