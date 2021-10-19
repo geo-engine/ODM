@@ -70,7 +70,7 @@ def generate_kmz(orthophoto_file, output_file=None, outsize=None):
                '--config GDAL_CACHEMAX %s%% ' % (orthophoto_file, output_file, bandparam, get_max_memory()))    
     
 def post_orthophoto_steps(args, bounds_file_path, orthophoto_file, orthophoto_tiles_dir):
-    if args.crop > 0:
+    if args.crop > 0 or args.boundary:
         Cropper.crop(bounds_file_path, orthophoto_file, get_orthophoto_vars(args), keep_original=not args.optimize_disk_space, warp_options=['-dstalpha'])
 
     if args.build_overviews and not args.cog:
@@ -86,7 +86,7 @@ def post_orthophoto_steps(args, bounds_file_path, orthophoto_file, orthophoto_ti
         generate_orthophoto_tiles(orthophoto_file, orthophoto_tiles_dir, args.max_concurrency)
 
     if args.cog:
-        convert_to_cogeo(orthophoto_file, max_workers=args.max_concurrency)
+        convert_to_cogeo(orthophoto_file, max_workers=args.max_concurrency, compression=args.orthophoto_compression)
 
 def compute_mask_raster(input_raster, vector_mask, output_raster, blend_distance=20, only_max_coords_feature=False):
     if not os.path.exists(input_raster):

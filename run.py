@@ -6,6 +6,7 @@ if sys.version_info.major < 3:
     print("Ups! ODM needs to run with Python 3. It seems you launched it with Python 2. Try using: python3 run.py ... ")
     sys.exit(1)
 
+import os
 from opendm import log
 from opendm import config
 from opendm import system
@@ -13,8 +14,6 @@ from opendm import io
 from opendm.progress import progressbc
 from opendm.utils import double_quote, get_processing_results_paths
 from opendm.loghelpers import args_to_dict
-
-import os
 
 from stages.odm_app import ODMApp
 
@@ -54,7 +53,7 @@ if __name__ == '__main__':
     retcode = app.execute()
     
     # Do not show ASCII art for local submodels runs
-    if retcode == 0 and not "submodels/submodel_" in args.project_path:
+    if retcode == 0 and not "submodels" in args.project_path:
         log.ODM_INFO('MMMMMMMMMMMNNNMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMMNNNMMMMMMMMMMM')
         log.ODM_INFO('MMMMMMdo:..---../sNMMMMMMMMMMMMMMMMMMMMMMMMMMNs/..---..:odMMMMMM')
         log.ODM_INFO('MMMMy-.odNMMMMMNy/`/mMMMMMMMMMMMMMMMMMMMMMMm/`/hNMMMMMNdo.-yMMMM')

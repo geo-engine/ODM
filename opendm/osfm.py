@@ -4,11 +4,15 @@ OpenSfM related utils
 
 import os, shutil, sys, json, argparse
 import yaml
+import numpy as np
+import pyproj
+from pyproj import CRS
 from opendm import io
 from opendm import log
 from opendm import system
 from opendm import context
 from opendm import camera
+from opendm import location
 from opendm.utils import get_depthmap_resolution
 from opendm.photo import find_largest_photo_dim
 from opensfm.large import metadataset
@@ -18,6 +22,8 @@ from opensfm.dataset import DataSet
 from opensfm import report
 from opendm.multispectral import get_photos_by_band
 from opendm.gpu import has_gpus
+from opensfm import multiview
+from opensfm.actions.export_geocoords import _transform
 
 class OSFMContext:
     def __init__(self, opensfm_project_path):
@@ -193,6 +199,7 @@ class OSFMContext:
                 "optimize_camera_parameters: %s" % ('no' if args.use_fixed_camera_params or args.cameras else 'yes'),
                 "undistorted_image_format: tif",
                 "bundle_outlier_filtering_type: AUTO",
+                "sift_peak_threshold: 0.066",
                 "align_orientation_prior: vertical",
                 "triangulation_type: ROBUST",
                 "retriangulation_ratio: 2",
@@ -254,6 +261,10 @@ class OSFMContext:
             config_filename = self.get_config_file_path()
             with open(config_filename, 'w') as fout:
                 fout.write("\n".join(config))
+            
+            # We impose our own reference_lla
+            if reconstruction.is_georeferenced():
+                self.write_reference_lla(reconstruction.georef.utm_east_offset, reconstruction.georef.utm_north_offset, reconstruction.georef.proj4())
         else:
             log.ODM_WARNING("%s already exists, not rerunning OpenSfM setup" % list_path)
 
@@ -427,6 +438,57 @@ class OSFMContext:
                 log.ODM_WARNING("Report could not be generated")
         else:
             log.ODM_WARNING("Report %s already exported" % report_path)
+    
+    def write_reference_lla(self, offset_x, offset_y, proj4):
+        reference_lla = self.path("reference_lla.json")
+
+        longlat = CRS.from_epsg("4326")
+        lon, lat = location.transform2(CRS.from_proj4(proj4), longlat, offset_x, offset_y)
+
+        with open(reference_lla, 'w') as f:
+            f.write(json.dumps({
+                'latitude': lat,
+                'longitude': lon,
+                'altitude': 0.0
+            }, indent=4))
+        
+        log.ODM_INFO("Wrote reference_lla.json")
+
+    def ground_control_points(self, proj4):
+        """
+        Load ground control point information.
+        """
+        gcp_stats_file = self.path("stats", "ground_control_points.json")
+
+        if not io.file_exists(gcp_stats_file):
+            return []
+        
+        gcps_stats = {}
+        try:
+            with open(gcp_stats_file) as f:
+                gcps_stats = json.loads(f.read())
+        except:
+            log.ODM_INFO("Cannot parse %s" % gcp_stats_file)
+
+        if not gcps_stats:
+            return []
+        
+        ds = DataSet(self.opensfm_project_path)
+        reference = ds.load_reference()
+        projection = pyproj.Proj(proj4)
+
+        result = []
+        for gcp in gcps_stats:
+            geocoords = _transform(gcp['coordinates'], reference, projection)
+            result.append({
+                'id': gcp['id'],
+                'observations': gcp['observations'],
+                'coordinates': geocoords,
+                'error': gcp['error']
+            })
+
+        return result
+    
 
     def name(self):
         return os.path.basename(os.path.abspath(self.path("..")))
@@ -448,10 +510,11 @@ def get_submodel_argv(args, submodels_path = None, submodel_name = None):
         tweaking --crop if necessary (DEM merging makes assumption about the area of DEMs and their euclidean maps that require cropping. If cropping is skipped, this leads to errors.)
         removing --gcp (the GCP path if specified is always "gcp_list.txt")
         reading the contents of --cameras
+        reading the contents of --boundary
     """
     assure_always = ['orthophoto_cutline', 'dem_euclidean_map', 'skip_3dmodel', 'skip_report']
     remove_always = ['split', 'split_overlap', 'rerun_from', 'rerun', 'gcp', 'end_with', 'sm_cluster', 'rerun_all', 'pc_csv', 'pc_las', 'pc_ept', 'tiles', 'copy-to', 'cog']
-    read_json_always = ['cameras']
+    read_json_always = ['cameras', 'boundary']
 
     argv = sys.argv
 

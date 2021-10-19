@@ -11,7 +11,7 @@ import sys
 # parse arguments
 processopts = ['dataset', 'split', 'merge', 'opensfm', 'openmvs', 'odm_filterpoints',
                'odm_meshing', 'mvs_texturing', 'odm_georeferencing',
-               'odm_dem', 'odm_orthophoto', 'odm_report']
+               'odm_dem', 'odm_orthophoto', 'odm_report', 'odm_postprocess']
 
 with open(os.path.join(context.root_path, 'VERSION')) as version_file:
     __version__ = version_file.read().strip()
@@ -95,7 +95,7 @@ def config(argv=None, parser=None):
     parser.add_argument('--end-with', '-e',
                         metavar='<string>',
                         action=StoreValue,
-                        default='odm_report',
+                        default='odm_postprocess',
                         choices=processopts,
                         help='End processing at this stage. Can be one of: %(choices)s. Default: %(default)s')
 
@@ -133,7 +133,7 @@ def config(argv=None, parser=None):
                         metavar='<string>',
                         action=StoreValue,
                         default='sift',
-                        choices=['sift', 'hahog'],
+                        choices=['sift', 'orb', 'hahog'],
                         help=('Choose the algorithm for extracting keypoints and computing descriptors. '
                             'Can be one of: %(choices)s. Default: '
                             '%(default)s'))
@@ -277,7 +277,7 @@ def config(argv=None, parser=None):
                               'Default: %(default)s'))
 
     parser.add_argument('--mesh-octree-depth',
-                        metavar='<positive integer>',
+                        metavar='<integer: 1 <= x <= 14>',
                         action=StoreValue,
                         default=11,
                         type=int,
@@ -302,6 +302,24 @@ def config(argv=None, parser=None):
                           'around the dataset boundaries, shrinked by N meters. '
                           'Use 0 to disable cropping. '
                           'Default: %(default)s'))
+
+    parser.add_argument('--boundary',
+                    default='',
+                    metavar='<json>',
+                    action=StoreValue,
+                    type=path_or_json_string,
+                    help='GeoJSON polygon limiting the area of the reconstruction. '
+                            'Can be specified either as path to a GeoJSON file or as a '
+                            'JSON string representing the contents of a '
+                            'GeoJSON file. Default: %(default)s')
+
+    parser.add_argument('--auto-boundary',
+                    action=StoreTrue,
+                    nargs=0,
+                    default=False,
+                    help='Automatically set a boundary using camera shot locations to limit the area of the reconstruction. '
+                    'This can help remove far away background artifacts (sky, background landscapes, etc.). See also --boundary. '
+                    'Default: %(default)s')
 
     parser.add_argument('--pc-quality',
                     metavar='<string>',

@@ -213,6 +213,7 @@ class ODM_Photo:
                         '@Camera:RigCameraIndex', # Parrot Sequoia, Sentera 21244-00_3.2MP-GS-0001
                         'Camera:RigCameraIndex', # MicaSense Altum
                     ])
+
                     self.set_attr_from_xmp_tag('radiometric_calibration', tags, [
                         'MicaSense:RadiometricCalibration',
                     ])
@@ -245,7 +246,8 @@ class ODM_Photo:
                     ], float)
 
                     self.set_attr_from_xmp_tag('capture_uuid', tags, [
-                        '@drone-dji:CaptureUUID'
+                        '@drone-dji:CaptureUUID', # DJI
+                        '@Camera:ImageUniqueID', # sentera 6x
                     ])
 
                     # Phantom 4 RTK
