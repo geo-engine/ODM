@@ -592,34 +592,34 @@ class BandFile:
                         i = 2
                         filename = parts[0]
                         band_index = int(parts[1])
-                        band_name = str(parts[2])
+                        band_name = str(parts[2]).strip()
 
                         capture_uuid = None
                         if len(parts) >= 4:
                             i = 3
-                            capture_uuid = (str(parts[i]))
+                            capture_uuid = (str(parts[i]).strip())
                             if capture_uuid == "0":
                                 capture_uuid = None
 
                         utc_time = None
                         if len(parts) >= 5:
                             i = 4
-                            time_stamp = str(parts[i])
+                            time_stamp = str(parts[i]).strip()
                             if time_stamp != "0":
-                                time_obj = datetime.fromisoformat(parts[4])
+                                time_obj = datetime.fromisoformat(str(parts[4]).strip())
                                 utc_time =  int(time_obj.timestamp() * 1000) 
 
                         camera_make = None
                         if len(parts) >= 6:
                             i = 5
-                            camera_make = (str(parts[i]))
+                            camera_make = (str(parts[i]).strip())
                             if camera_make == "0":
                                 camera_make = None
 
                         camera_model = None
                         if len(parts) >= 7:
                             i = 6
-                            camera_model = (str(parts[i]))
+                            camera_model = (str(parts[i]).strip())
                             if camera_model == "0":
                                 camera_model = None
 
