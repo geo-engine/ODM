@@ -5,6 +5,7 @@ import json
 from opendm import context
 from opendm import io
 from opendm import types
+from opendm.photo import PhotoCorruptedException
 from opendm import log
 from opendm import system
 from opendm.geo import GeoFile
@@ -136,13 +137,16 @@ class ODMLoadDatasetStage(types.ODM_Stage):
                 with open(tree.dataset_list, 'w') as dataset_list:
                     log.ODM_INFO("Loading %s images" % len(path_files))
                     for f in path_files:
-                        p = types.ODM_Photo(f)
-                        p.set_mask(find_mask(f, masks))
-                        photos += [p]
-                        dataset_list.write(photos[-1].filename + '\n')
-                
+                        try:
+                            p = types.ODM_Photo(f)
+                            p.set_mask(find_mask(f, masks))
+                            photos += [p]
+                            dataset_list.write(photos[-1].filename + '\n')
+                        except PhotoCorruptedException:
+                            log.ODM_WARNING("%s seems corrupted and will not be used" % os.path.basename(f))
+
                 # Check if a geo file is available
-                if tree.odm_geo_file is not None and os.path.exists(tree.odm_geo_file):
+                if tree.odm_geo_file is not None and os.path.isfile(tree.odm_geo_file):
                     log.ODM_INFO("Found image geolocation file")
                     gf = GeoFile(tree.odm_geo_file)
                     updated = 0
@@ -166,6 +170,19 @@ class ODMLoadDatasetStage(types.ODM_Stage):
                             log.ODM_DEBUG("BandEntry: %s" % str(entry))
                             updated += 1
                     log.ODM_INFO("Updated %s image bands" % updated)
+                # GPSDOP override if we have GPS accuracy information (such as RTK)
+                if 'gps_accuracy_is_set' in args:
+                    log.ODM_INFO("Forcing GPS DOP to %s for all images" % args.gps_accuracy)
+
+                    for p in photos:
+                        p.override_gps_dop(args.gps_accuracy)
+                
+                # Override projection type
+                if args.camera_lens != "auto":
+                    log.ODM_INFO("Setting camera lens to %s for all images" % args.camera_lens)
+
+                    for p in photos:
+                        p.override_camera_projection(args.camera_lens)
 
                 # Save image database for faster restart
                 save_images_database(photos, images_database_file)
@@ -203,3 +220,11 @@ class ODMLoadDatasetStage(types.ODM_Stage):
             else:
                 args.boundary = None
                 log.ODM_WARNING("Reconstruction is not georeferenced, but boundary file provided (will ignore boundary file)")
+
+        # If sfm-algorithm is triangulation, check if photos have OPK
+        if args.sfm_algorithm == 'triangulation':
+            for p in photos:
+                if not p.has_opk():
+                    log.ODM_WARNING("No omega/phi/kappa angles found in input photos (%s), switching sfm-algorithm to incremental" % p.filename)
+                    args.sfm_algorithm = 'incremental'
+                    break

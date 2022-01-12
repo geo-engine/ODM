@@ -1,4 +1,4 @@
-import shutil, os, glob, math
+import shutil, os, glob, math, sys
 
 from opendm import log
 from opendm import io
@@ -6,6 +6,7 @@ from opendm import system
 from opendm import context
 from opendm import point_cloud
 from opendm import types
+from opendm.gpu import has_gpu
 from opendm.utils import get_depthmap_resolution
 from opendm.osfm import OSFMContext
 from opendm.multispectral import get_primary_band_name
@@ -62,7 +63,7 @@ class ODMOpenMVSStage(types.ODM_Stage):
             
             config = [
                 " --resolution-level %s" % int(resolution_level),
-	            "--min-resolution %s" % depthmap_resolution,
+                "--min-resolution %s" % depthmap_resolution,
                 "--max-resolution %s" % int(outputs['undist_image_max_size']),
                 "--max-threads %s" % args.max_concurrency,
                 "--number-views-fuse 2",
@@ -70,15 +71,33 @@ class ODMOpenMVSStage(types.ODM_Stage):
                 "-v 0"
             ]
 
+            gpu_config = []
+
+            if not has_gpu():
+                gpu_config.append("--cuda-device -1")
+
             if args.pc_tile:
                 config.append("--fusion-mode 1")
             
             if not args.pc_geometric:
                 config.append("--geometric-iters 0")
 
-            system.run('%s "%s" %s' % (context.omvs_densify_path, 
-                                       openmvs_scene_file,
-                                      ' '.join(config)))
+            def run_densify():
+                system.run('"%s" "%s" %s' % (context.omvs_densify_path, 
+                                        openmvs_scene_file,
+                                        ' '.join(config + gpu_config)))
+
+            try:
+                run_densify()
+            except system.SubprocessException as e:
+                # If the GPU was enabled and the program failed,
+                # try to run it again without GPU
+                if e.errorCode == 1 and len(gpu_config) == 0:
+                    log.ODM_WARNING("OpenMVS failed with GPU, is your graphics card driver up to date? Falling back to CPU.")
+                    gpu_config.append("--cuda-device -1")
+                    run_densify()
+                else:
+                    raise e
 
             self.update_progress(85)
             files_to_remove = []
@@ -92,9 +111,9 @@ class ODMOpenMVSStage(types.ODM_Stage):
                     '-w "%s"' % depthmaps_dir, 
                     "-v 0",
                 ]
-                system.run('%s "%s" %s' % (context.omvs_densify_path, 
+                system.run('"%s" "%s" %s' % (context.omvs_densify_path, 
                                         openmvs_scene_file,
-                                        ' '.join(config)))
+                                        ' '.join(config + gpu_config)))
                 
                 scene_files = glob.glob(os.path.join(tree.openmvs, "scene_[0-9][0-9][0-9][0-9].mvs"))
                 if len(scene_files) == 0:
@@ -126,10 +145,10 @@ class ODMOpenMVSStage(types.ODM_Stage):
                         ]
 
                         try:
-                            system.run('%s "%s" %s' % (context.omvs_densify_path, sf, ' '.join(config)))
+                            system.run('"%s" "%s" %s' % (context.omvs_densify_path, sf, ' '.join(config + gpu_config)))
 
                             # Filter
-                            system.run('%s "%s" --filter-point-cloud -1 -v 0' % (context.omvs_densify_path, scene_dense_mvs))
+                            system.run('"%s" "%s" --filter-point-cloud -1 -v 0 %s' % (context.omvs_densify_path, scene_dense_mvs, ' '.join(gpu_config)))
                         except:
                             log.ODM_WARNING("Sub-scene %s could not be reconstructed, skipping..." % sf)
 
@@ -158,7 +177,7 @@ class ODMOpenMVSStage(types.ODM_Stage):
                         '-i "%s"' % scene_dense,
                         "-v 0"
                     ]
-                    system.run('%s %s' % (context.omvs_densify_path, ' '.join(config)))
+                    system.run('"%s" %s' % (context.omvs_densify_path, ' '.join(config + gpu_config)))
                 else:
                     raise system.ExitException("Cannot find scene_dense.mvs, dense reconstruction probably failed. Exiting...")
 

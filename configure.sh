@@ -104,7 +104,6 @@ installruntimedepsonly() {
     installdepsfromsnapcraft runtime opensfm
     echo "Installing OpenMVS Dependencies"
     installdepsfromsnapcraft runtime openmvs
-    
 }
 
 installreqs() {
@@ -127,11 +126,11 @@ installreqs() {
     echo "Installing OpenMVS Dependencies"
     installdepsfromsnapcraft build openmvs
     
-
+    set -e
     pip install --ignore-installed -r requirements.txt
-    if [ ! -z "$GPU_INSTALL" ]; then
-        pip install --ignore-installed -r requirements.gpu.txt
-    fi
+    #if [ ! -z "$GPU_INSTALL" ]; then
+    #fi
+    set +e
 }
     
 install() {

@@ -30,7 +30,7 @@ class ODMOpenSfMStage(types.ODM_Stage):
 
         octx = OSFMContext(tree.opensfm)
         octx.setup(args, tree.dataset_raw, reconstruction=reconstruction, rerun=self.rerun())
-        octx.extract_metadata(self.rerun())
+        octx.photos_to_metadata(photos, self.rerun())
         self.update_progress(20)
         octx.feature_matching(self.rerun())
         self.update_progress(30)
@@ -113,7 +113,7 @@ class ODMOpenSfMStage(types.ODM_Stage):
         def radiometric_calibrate(shot_id, image):
             photo = reconstruction.get_photo(shot_id)
             if photo.is_thermal():
-                return thermal.dn_to_temperature(photo, image)
+                return thermal.dn_to_temperature(photo, image, tree.dataset_raw)
             else:
                 return multispectral.dn_to_reflectance(photo, image, use_sun_sensor=args.radiometric_calibration=="camera+sun")
 

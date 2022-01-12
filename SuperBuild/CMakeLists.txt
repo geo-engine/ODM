@@ -70,6 +70,10 @@ if (WIN32)
   file(GLOB COPY_DLLS "${VCPKG_ROOT}/installed/x64-windows/bin/*.dll")
   file(COPY ${COPY_DLLS} DESTINATION "${SB_INSTALL_DIR}/bin")
 
+  message("Copying CUDA DLLs...")
+  file(GLOB CUDA_DLLS "$ENV{CUDA_PATH}/bin/cudart64*.dll")
+  file(COPY ${CUDA_DLLS} DESTINATION "${SB_INSTALL_DIR}/bin")
+
   set(WIN32_GDAL_ARGS -DGDAL_FOUND=TRUE -DGDAL_LIBRARY=${GDAL_LIBRARY} -DGDAL_INCLUDE_DIR=${GDAL_INCLUDE_DIR})
 else()
   set(PYTHON_EXE_PATH "/usr/bin/python3")
@@ -136,6 +140,8 @@ set(custom_libs OpenSfM
 				Untwine
 				MvsTexturing
 				OpenMVS
+				FPCFilter
+				PyPopsift
 )
 
 # Build entwine only on Linux
@@ -161,7 +167,7 @@ include(ProcessorCount)
 ProcessorCount(nproc)
 
 if (WIN32)
-    set (POISSON_BUILD_CMD ${CMAKE_MAKE_PROGRAM} ${SB_SOURCE_DIR}/PoissonRecon/PoissonRecon.vcxproj /p:configuration=${CMAKE_BUILD_TYPE} /p:PlatformToolset=${CMAKE_VS_PLATFORM_TOOLSET} /p:WindowsTargetPlatformVersion=${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION})
+    set (POISSON_BUILD_CMD ${CMAKE_MAKE_PROGRAM} ${SB_SOURCE_DIR}/PoissonRecon/PoissonRecon.vcxproj /p:configuration=${CMAKE_BUILD_TYPE} /p:Platform=x64 /p:PlatformToolset=${CMAKE_VS_PLATFORM_TOOLSET} /p:WindowsTargetPlatformVersion=${CMAKE_VS_WINDOWS_TARGET_PLATFORM_VERSION})
     set (POISSON_BIN_PATH "x64/${CMAKE_BUILD_TYPE}/PoissonRecon.exe")
 else()
     set (POISSON_BUILD_CMD  make -j${nproc} poissonrecon)
